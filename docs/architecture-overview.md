@@ -1,58 +1,84 @@
-# Space Charts Platform â€“ Draft Architecture
+# Space Charts Site – Lightweight Architecture
 
-This document captures a strawman architecture for replacing the current PowerBI site with a custom, data-driven web application. We will refine it after the requirements questionnaire is complete.
+This document captures a simplified plan to publish charts from your local machine to a free GitHub Pages site while keeping Microsoft SQL Server as the source of truth.
 
 ## Goals
-- Deliver rich, highly stylized charts with fine-grained control over the presentation layer.
-- Automate data refreshes from authoritative SQL sources with transparent transformation logic.
-- Provide a foundation that supports authentication, auditing, and future growth.
+- Keep infrastructure minimal: no cloud databases, queues, or containers.
+- Author and refresh charts locally, then publish static assets to GitHub Pages.
+- Use Microsoft SQL Server Express (or full SQL Server) for storage and transformation.
+- Make the workflow repeatable so a single person can run it end-to-end.
 
-## High-level Components
-1. **Front-end Web App**
-   - Framework: React + Next.js (SSR for SEO and fast first paint).
-   - Styling: TailwindCSS plus custom theming for NASA/AEI branding.
-   - Charting: D3.js for bespoke visuals plus Plotly/ECharts wrappers where declarative interactions suffice.
-   - State/Data fetching: React Query to manage caching, background refresh, and loading/error states.
-   - Internationalization & accessibility baked into components from the start.
+## Overview
+```
++------------+     query/export     +---------------------+     commit/push     +----------------+
+¦ MS SQL     ¦ -------------------? ¦ Local export script ¦ ----------------? ¦ GitHub repo   ¦
+¦ (local/VM) ¦                     ¦ (Python or PowerShell) ¦                 ¦ (main branch) ¦
++------------+                     +---------------------+                     +---------------+
+                                                                               build¦
+                                                                               ¦    ?
+                                                                               +---------------+
+                                                                               ¦ GitHub Pages  ¦
+                                                                               ¦ (gh-pages)    ¦
+                                                                               +---------------+
+```
 
-2. **Backend API Layer**
-   - FastAPI (Python) exposing REST endpoints at `/api/charts/<chart_id>` and `/api/filters/...`.
-   - Pydantic models provide validation and documentation (OpenAPI schema).
-   - Authentication middleware that integrates with NASA SSO (OAuth/OpenID Connect) once requirements are clear.
-   - Rate limiting + structured logging via Starlette middleware.
+## Key Components
+- **Data source:** Microsoft SQL Server Express installed locally (or on an on-prem VM). Store raw tables and any lightweight views you need for charts.
+- **Export script:** A small script run on your machine that queries SQL Server and writes JSON files into `src/data/`.
+  - Python option: use `pyodbc` with a DSN or connection string stored in `.env.local`.
+  - PowerShell option: use `Invoke-Sqlcmd` and `ConvertTo-Json`.
+  - Commit the script; keep connection secrets out of version control.
+- **Static site:** Vite + React (or plain HTML + vanilla JS if you prefer) with Chart.js or Plotly for visuals.
+  - Charts read the exported JSON files at build/runtime; no API layer is required.
+  - Add reusable layout components for AEI branding and responsive design.
+- **Hosting:** GitHub Pages serves the built site from the `gh-pages` branch.
+  - A GitHub Action builds the site on each push to `main`, then publishes the build output.
+  - Because Pages cannot reach your local SQL Server, the action only uses the JSON files you committed.
 
-3. **Data Processing & Storage**
-   - Core data warehouse in PostgreSQL (could leverage existing NASA infrastructure or RDS/Aurora).
-   - dbt models materialize curated schemas for each chart/dashboard.
-   - Orchestration handled by Prefect Cloud (or self-hosted) to schedule ingestion + dbt runs.
-   - Optional Redis layer for caching frequently requested aggregates.
+## Data Refresh Workflow
+1. Update or ingest data in SQL Server (manually, via your existing Python loader, etc.).
+2. Run the export script locally: `python scripts/export_charts.py`.
+   - Script writes `src/data/<chart-name>.json` and optionally a `last-updated.json` metadata file.
+3. Review generated files; add them with `git add`.
+4. Run `npm run build` locally to confirm charts render with the new data.
+5. Commit and push to GitHub. The GitHub Action rebuilds the site and publishes the latest charts to GitHub Pages.
 
-4. **Infrastructure & Deployment**
-   - Docker images for both front-end and backend services.
-   - CI/CD (GitHub Actions) handles lint/test/build, publishes images to a container registry.
-   - Production deployment via managed Kubernetes (EKS/GKE) or container app platform (Render/Fly.io) depending on compliance constraints.
-   - Front-end served behind a CDN (CloudFront/Akamai) with edge caching.
-   - Infrastructure-as-Code via Terraform to document and reproduce environments.
+## Repository Layout Suggestion
+```
+.
++-- package.json
++-- vite.config.ts
++-- src/
+¦   +-- data/               # JSON exports committed to the repo
+¦   +-- charts/             # Reusable chart components
+¦   +-- pages/              # Static pages (React Router or file-based routing)
+¦   +-- styles/
++-- scripts/
+¦   +-- export_charts.py    # Queries SQL Server and writes JSON
++-- public/                 # Static assets (logo, favicon, etc.)
++-- .github/workflows/
+    +-- deploy.yml          # Builds and publishes to gh-pages
+```
 
-5. **Observability & Ops**
-   - Centralized logging (ELK/OpenSearch stack).
-   - Metrics and tracing via Prometheus + Grafana or OpenTelemetry vendor.
-   - Alerting on failed data flows, API latency, and front-end errors (Sentry/New Relic).
+## GitHub Pages Deployment
+- Enable GitHub Pages for the repository and point it to the `gh-pages` branch.
+- Sample GitHub Action (`deploy.yml`):
+  - Trigger: `on: push` to `main`.
+  - Steps: checkout code, install Node, run `npm ci`, run `npm run build`, deploy using `peaceiris/actions-gh-pages` with a deploy key or the default `GITHUB_TOKEN`.
+- The build output (e.g., `dist/`) becomes the GitHub Pages site.
 
-## Security Considerations
-- Secrets management via AWS Secrets Manager or Vault; never commit credentials.
-- Role-based access for APIs (admin vs. viewer) and row-level security enforced in SQL when necessary.
-- Automated dependency scanning (Dependabot/Snyk) integrated with CI.
-
-## Open Questions
-- Final hosting environment (agency-managed vs. commercial cloud).
-- Need for offline/air-gapped deployments.
-- Volume of users/concurrent sessions to size infrastructure appropriately.
+## Local Development Setup
+1. Install prerequisites:
+   - Node.js LTS
+   - Python 3.x (if you use the Python export path)
+   - Microsoft SQL Server Express + SQL Server Management Studio (optional)
+2. Copy `.env.local.example` to `.env.local`; add your SQL Server connection string.
+3. Run `npm install` then `npm run dev` for live development.
+4. Run the export script whenever you change the data; use `npm run build` before pushing.
 
 ## Next Steps
-1. Fill out the discovery questionnaire (`requirements-discovery.md`).
-2. Validate technology choices with stakeholders/IT security.
-3. Prototype a thin vertical slice: one dataset surfaced via FastAPI and rendered by a Next.js component.
-4. Stand up CI basics (linting + formatting) in this repository.
-
-This document will evolve as we gather more detailed requirements and proof-of-concept results.
+1. Add the lightweight repo structure above (or adapt the existing one).
+2. Create the export script and confirm it writes the JSON files you need for the first chart.
+3. Build one chart page end-to-end using hard-coded JSON to validate the stack, then wire in the export script output.
+4. Set up the GitHub Pages deploy workflow and verify the site publishes from `main`.
+5. Document the refresh steps in the README so future updates stay consistent.

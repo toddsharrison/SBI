@@ -1,0 +1,4 @@
+﻿pyodbc>=5.0
+pandas>=2.0
+numpy>=1.26
+fast-to-sql>=3.0
