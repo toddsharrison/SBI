@@ -3,9 +3,10 @@ import react from '@vitejs/plugin-react';
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  base: '/charts-website/',
+  base: '/SBI/',
   plugins: [react()],
   build: {
     outDir: 'dist'
   }
 });
+
