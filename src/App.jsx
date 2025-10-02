@@ -5,50 +5,50 @@ const g0 = 9.81;
 const FORM_SECTIONS = [
   {
     id: 'sbi-performance',
-    title: 'SBI Performance',
+    title: 'Interceptor performance',
     fields: [
-      { name: 'sbiOrbitAltitudeKm', label: 'SBI Orbit Altitude', defaultValue: '300', unit: 'km', min: 150, max: 22500, step: '1', hint: 'Orbital altitude at which SBIs will be stationed.' },
-      { name: 'averageAccelerationG', label: 'Average Acceleration', defaultValue: '15.0', unit: 'g', min: 1, max: 30, step: '0.1', hint: 'Average acceleration of the interceptor over its flight profile.' },
-      { name: 'maxDeltaVKmPerS', label: 'Max Velocity (Delta V)', defaultValue: '6.0', unit: 'km/s', min: 0.1, max: 20, step: '0.1', hint: 'Maximum change in velocity of the interceptor.' },
-      { name: 'divertVelocityKmPerS', label: 'Divert Velocity', defaultValue: '2.5', unit: 'km/s', min: 0, max: 10, step: '0.1', hint: 'Divert velocity of the kill vehicle for terminal maneuvers.' },
-      { name: 'thrusterIspSeconds', label: 'Thruster Performance (Isp)', defaultValue: '240', unit: 's', min: 100, max: 1000, step: '1', hint: 'Specific impulse for the interceptor and kill vehicle thrusters.' },
-      { name: 'killVehicleDryMassKg', label: 'Kill Vehicle Dry Mass', defaultValue: '25.0', unit: 'kg', min: 1, step: '0.1', hint: 'Total mass of the kill vehicle (structure, sensors, thrusters, avionics, etc.) not including propellant.' },
-      { name: 'interceptorBodyDryMassKg', label: 'Interceptor Body Dry Mass', defaultValue: '25.0', unit: 'kg', min: 1, step: '0.1', hint: 'Total mass of the interceptor (structure, thrusters, avionics, etc.) not including the kill vehicle or propellant.' },
-      { name: 'supportModuleDryMassKg', label: 'Support Module Dry Mass', defaultValue: '50.0', unit: 'kg', min: 1, step: '0.1', hint: 'Mass of the module that houses the interceptor in orbit for power, communications, station keeping, etc. that is left behind when the interceptor fires. If multiple interceptors are housed together, this is the fraction of the total module mass allocated for each interceptor.'},
-      { name: 'sbiLifeExpectancyYears', label: 'SBI Life Expectancy', defaultValue: '5', unit: 'years', min: 1, max: 20, step: '1', hint: 'How long each interceptor is expected to last in orbit before replacement.' },
-      { name: 'killProbabilityPercent', label: 'Kill Probability (Pk)', defaultValue: '80.0', unit: '%', min: 1, max: 99.9, step: '0.1', hint: 'Probability that a single interceptor will destory its target.' },
-      { name: 'compositeKillProbabilityPercent', label: 'Composite Kill Probability', defaultValue: '96.0', unit: '%', min: 1, max: 99.9, step: '0.1', hint: 'Desired overall probability that each threat will be destroyed. In combination with the single-shot Pk, this determines how many interceptors must be fired at each threat.' }
+      { name: 'sbiOrbitAltitudeKm', label: 'SBI orbit altitude', defaultValue: '300', unit: 'km', min: 150, max: 22500, step: '1', hint: 'Orbital altitude at which SBIs will be stationed.' },
+      { name: 'averageAccelerationG', label: 'Average acceleration', defaultValue: '15.0', unit: 'g', min: 1, max: 30, step: '0.1', hint: 'Average acceleration of the interceptor over its flight profile.' },
+      { name: 'maxDeltaVKmPerS', label: 'Max velocity (ΔV)', defaultValue: '6.0', unit: 'km/s', min: 0.1, max: 20, step: '0.1', hint: 'Maximum change in velocity of the interceptor.' },
+      { name: 'divertVelocityKmPerS', label: 'Divert velocity', defaultValue: '2.5', unit: 'km/s', min: 0, max: 10, step: '0.1', hint: 'Divert velocity of the kill vehicle for terminal maneuvers.' },
+      { name: 'thrusterIspSeconds', label: 'Thruster performance (Isp)', defaultValue: '240', unit: 's', min: 100, max: 1000, step: '1', hint: 'Specific impulse for the interceptor and kill vehicle thrusters.' },
+      { name: 'killVehicleDryMassKg', label: 'Kill vehicle dry mass', defaultValue: '25.0', unit: 'kg', min: 1, step: '0.1', hint: 'Total mass of the kill vehicle (structure, sensors, thrusters, avionics, etc.) not including propellant.' },
+      { name: 'interceptorBodyDryMassKg', label: 'Interceptor body dry mass', defaultValue: '25.0', unit: 'kg', min: 1, step: '0.1', hint: 'Total mass of the interceptor (structure, thrusters, avionics, etc.) not including the kill vehicle or propellant.' },
+      { name: 'supportModuleDryMassKg', label: 'Support module dry mass', defaultValue: '50.0', unit: 'kg', min: 1, step: '0.1', hint: 'Mass of the module that houses the interceptor in orbit for power, communications, station keeping, etc. that is left behind when the interceptor fires. If multiple interceptors are housed together, this is the fraction of the total module mass allocated for each interceptor.'},
+      { name: 'sbiLifeExpectancyYears', label: 'SBI life expectancy', defaultValue: '5', unit: 'years', min: 1, max: 20, step: '1', hint: 'How long each interceptor is expected to last in orbit before replacement.' },
+      { name: 'killProbabilityPercent', label: 'Kill probability (Pk)', defaultValue: '80.0', unit: '%', min: 1, max: 99.9, step: '0.1', hint: 'Probability that a single interceptor will destory its target.' },
+      { name: 'compositeKillProbabilityPercent', label: 'Composite kill probability', defaultValue: '96.0', unit: '%', min: 1, max: 99.9, step: '0.1', hint: 'Desired overall probability that each threat will be destroyed. In combination with the single-shot Pk, this determines how many interceptors must be fired at each threat.' }
       
     ]
   },
   {
     id: 'threat-parameters',
-    title: 'Threat Parameters',
+    title: 'Threat parameters',
     fields: [
-      { name: 'salvoSize', label: 'Salvo Size', defaultValue: '1', unit: 'missiles', min: 1, max: 1000, step: '1', hint: 'Maximum number of missiles launched at once that the systems should be able to intercept.' },
-      { name: 'interceptAltitudeKm', label: 'Intercept Altitude', defaultValue: '200', unit: 'km', min: 10, max: 10000, step: '1', hint: 'Minimum altitude at which threats will be engaged. If below 100km, additional mass should be added to the kill vehicle to accomodate atmospheric re-entry (heat sheilding, etc.).' },
-      { name: 'maxLatitudeCoverageDeg', label: 'Max Latitude Coverage', defaultValue: '90', unit: 'deg', min: 1, max: 90, step: '1', hint: 'Maximum latitude where SBIs will provide coverage. For global coverage, use 90 degrees. For North Korea and Iran only, use 45 degrees.' },
-      { name: 'flyoutTimeSeconds', label: 'Flyout Time', defaultValue: '120.0', unit: 's', min: 10, max: 1800, step: '.1', hint: 'The time between when the command is given to fire an interceptor and the latest point at which it can hit a target.' }
+      { name: 'salvoSize', label: 'Salvo size', defaultValue: '1', unit: 'missiles', min: 1, max: 1000, step: '1', hint: 'Maximum number of missiles launched at once the systems should be able to intercept.' },
+      { name: 'interceptAltitudeKm', label: 'Intercept altitude', defaultValue: '200', unit: 'km', min: 10, max: 10000, step: '1', hint: 'Minimum altitude at which threats will be engaged. If below 100km, additional mass should be added to the kill vehicle to accomodate atmospheric re-entry (heat sheilding, etc.).' },
+      { name: 'maxLatitudeCoverageDeg', label: 'Max latitude coverage', defaultValue: '90', unit: 'deg', min: 1, max: 90, step: '1', hint: 'Maximum latitude where SBIs will provide coverage. For global coverage, use 90 degrees. For North Korea and Iran only, use 45 degrees.' },
+      { name: 'flyoutTimeSeconds', label: 'Flyout time', defaultValue: '120.0', unit: 's', min: 10, max: 1800, step: '.1', hint: 'The time between when the command is given to fire an interceptor and the latest point at which it can hit a target.' }
     ]
   },
   {
     id: 'cost-parameters',
-    title: 'Interceptor Cost Parameters (in constant dollars)',
+    title: 'Interceptor cost parameters (in constant dollars)',
     fields: [
-      { name: 'nonRecurringDevCostMillion', label: 'Non-recurring Development', defaultValue: '7000', prefix: '$', unit: 'million USD', min: 0, step: '1', hint: 'Total non-recurring research, development, and integration cost for each generation of interceptors.' },
-      { name: 'firstUnitInterceptorCostMillion', label: 'First Unit Interceptor Cost', defaultValue: '70.0', prefix: '$', unit: 'million USD', min: 1, step: '0.1', hint: 'Unit cost of the first interceptor produced.' },
-      { name: 'interceptorLearningPercent', label: 'Interceptor Learning Percent', defaultValue: '85.0', unit: '%', min: 70, max: 100, step: '0.1', hint: 'The rate at which the unit cost will decline as more are built. An 90% learning curve means that each time the quantity doubles the unit cost declines by 10%.' },
-      { name: 'operatingSupportCostPerYearMillion', label: 'Operating & Support Cost per Year', defaultValue: '450', prefix: '$', unit: 'million USD', min: 0, step: '1', hint: 'Estimated cost to operate the system, including personnel, training, facilities, etc.' },
-      { name: 'costEstimatePeriodYears', label: 'Period of Cost Estimate', defaultValue: '20', unit: 'years', min: 1, max: 100, step: '1', hint: 'The total number of years assessed in the cost estimate.' }
+      { name: 'nonRecurringDevCostMillion', label: 'Non-recurring development', defaultValue: '7000', prefix: '$', unit: 'million USD', min: 0, step: '1', hint: 'Total non-recurring research, development, and integration cost for each generation of interceptors.' },
+      { name: 'firstUnitInterceptorCostMillion', label: 'First unit interceptor cost', defaultValue: '70.0', prefix: '$', unit: 'million USD', min: 1, step: '0.1', hint: 'Unit cost of the first interceptor produced.' },
+      { name: 'interceptorLearningPercent', label: 'Interceptor learning percent', defaultValue: '85.0', unit: '%', min: 70, max: 100, step: '0.1', hint: 'The rate at which the unit cost will decline as more are built. An 90% learning curve means that each time the quantity doubles the unit cost declines by 10%.' },
+      { name: 'operatingSupportCostPerYearMillion', label: 'Operating & support cost per year', defaultValue: '450', prefix: '$', unit: 'million USD', min: 0, step: '1', hint: 'Estimated cost to operate the system, including personnel, training, facilities, etc.' },
+      { name: 'costEstimatePeriodYears', label: 'Period of cost estimate', defaultValue: '20', unit: 'years', min: 1, max: 100, step: '1', hint: 'The total number of years assessed in the cost estimate.' }
     ]
   },
   {
     id: 'launch-parameters',
-    title: 'Launch Vehicle Parameters',
+    title: 'Launch vehicle parameters',
     fields: [
-      { name: 'payloadCapacityPerVehicleKg', label: 'Payload Capacity per Vehicle', defaultValue: '45000', unit: 'kg', min: 15000, max: 300000, step: '100', hint: 'Lift capability for the selected launch vehicle.' },
-      { name: 'firstUnitLaunchCostMillion', label: 'First Unit Launch Cost', defaultValue: '150.0', prefix: '$', unit: 'million USD', min: 1, step: '0.1', hint: 'Initial cost per launch.' },
-      { name: 'launchLearningPercent', label: 'Launch Learning Percent', defaultValue: '95', unit: '%', min: 70, max: 100, step: '0.1', hint: 'The rate at which launch costs will decline as more are built. An 90% learning curve means that each time the quantity doubles the cost per launch declines by 10%.' }
+      { name: 'payloadCapacityPerVehicleKg', label: 'Payload capacity per vehicle', defaultValue: '45000', unit: 'kg', min: 15000, max: 300000, step: '100', hint: 'Lift capability for the selected launch vehicle.' },
+      { name: 'firstUnitLaunchCostMillion', label: 'First unit launch cost', defaultValue: '150.0', prefix: '$', unit: 'million USD', min: 1, step: '0.1', hint: 'Initial cost per launch.' },
+      { name: 'launchLearningPercent', label: 'Launch learning percent', defaultValue: '95', unit: '%', min: 70, max: 100, step: '0.1', hint: 'The rate at which launch costs will decline as more are built. An 90% learning curve means that each time the quantity doubles the cost per launch declines by 10%.' }
     ]
   }
 ];
@@ -248,14 +248,14 @@ export default function App() {
       <header className="page-header">
         <h1>Space-Based Interceptor Calculator</h1>
         <p>
-          Estimate the size and cost of a space-based interceptor (SBI) system using your own assumptions for interceptor performance, threats addressed, and key cost parameters.
+          Estimate the size and cost of a space-based interceptor (SBI) system using your own assumptions.
         </p>
       </header>
 
       <section className="form-section">
         <h2>Inputs</h2>
         <p className="section-lede">
-          Enter your assumptions for interceptor performance, threats, interceptor costs, and launch vehicle capabilities. Units for each entry are shown beside the input.
+          Enter your values for interceptor performance, threat parameters, cost parameters, and launch vehicle capabilities. Units for each entry are shown beside the input.
         </p>
 
         {errors.length > 0 && (
@@ -313,7 +313,7 @@ export default function App() {
 
           <div className="form-actions">
             <button className="primary" type="submit">
-              Run scenario
+              Calculate
             </button>
             <button className="secondary" type="button" onClick={handleReset}>
               Reset defaults
@@ -326,7 +326,7 @@ export default function App() {
         <div className="results-header">
           <h2>Results</h2>
           <p>
-            Last run {formatTimestamp(lastRun)} sized for a {formatPercent(metrics.requestedCompositeKillProbabilityPercent)} target with {formatInt(metrics.interceptorsPerThreat)} interceptors allocated per incoming missile.
+            Last run: {formatTimestamp(lastRun)}
           </p>
         </div>
 
@@ -334,7 +334,7 @@ export default function App() {
           <article className="result-card">
             <h3>Total system cost</h3>
             <p className="result-value">{formatUSDbillions(metrics.totalSystemCostBillion)}</p>
-            <p className="result-hint">Includes development, procurement, launches, and O&S costs across the estimate period in constant dollars.</p>
+            <p className="result-hint">Includes development, procurement, launch, and O&S costs over {formatInt(metrics.costEstimatePeriodYears)} years in constant dollars.</p>
           </article>
           
           <article className="result-card">
@@ -346,7 +346,7 @@ export default function App() {
           <article className="result-card">
             <h3># of launches required</h3>
             <p className="result-value">{formatInt(metrics.launchCount)}</p>
-            <p className="result-hint">Number of launches needed to deploy the constellation for each generation of interceptors.</p>
+            <p className="result-hint">Number of launches needed to deploy each generation of the constellation.</p>
           </article>
          
         </div>
