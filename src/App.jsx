@@ -106,8 +106,8 @@ const DEFAULT_CHART_CONFIG = {
   rangeEnd: '10'
 };
 
-const MAX_CHART_POINTS = 5000;
-const MAX_SWEEP_STEPS = 1000;
+const MAX_CHART_POINTS = 3000;
+const MAX_SWEEP_STEPS = 500;
 
 const RESOURCE_LINKS = [
   {
@@ -568,6 +568,18 @@ export default function App() {
             </a>
           </aside>
         </div>
+      </section>
+
+      <section className="notes-section">
+        <details>
+          <summary>Notes</summary>
+          <p>This model makes the following simplifying assumptions:</p>
+          <ul>
+            <li>The number of interceptors needed in the constellation assumes that they are evenly spaced around the Earth. In reality, the satellites would be unevenly distributed in orbital planes, likely in a hybrid Walker constellation. The number of interceptors calculated is therefore a best case assumption, and the actual number would be somewhat higher.</li>
+            <li>The propellant mass calculations assume both the interceptor and kill vehicle use thrusters with the same Isp.</li>
+            <li>The cost calculations assume that the learning curve resets with each generation of interceptors. This means that each time the constellation must be replenished over the period of analysis, the unit cost of the interceptors reverts to the original first unit cost and then follows the learning curve again. The same assumption is also used for launch costs.</li>
+          </ul>
+        </details>
       </section>
     </main>
   );
@@ -1281,8 +1293,8 @@ function computeDefaultRangeForField(field, baseAssumptions) {
   const min = field.min ?? Number.NEGATIVE_INFINITY;
   const max = field.max ?? Number.POSITIVE_INFINITY;
 
-  let start = Number.isFinite(baseline) ? baseline - step * 5 : min;
-  let end = Number.isFinite(baseline) ? baseline + step * 5 : max;
+  let start = Number.isFinite(baseline) ? baseline - step * 50 : min;
+  let end = Number.isFinite(baseline) ? baseline + step * 50 : max;
 
   if (Number.isFinite(field.min)) {
     start = Math.max(start, field.min);
