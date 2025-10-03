@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { utils as XLSXUtils, writeFile as writeXLSXFile } from 'xlsx';
 
 const g0 = 9.81;
 
@@ -704,11 +705,45 @@ function ChartSection({ assumptions, chartConfig, chartState, onChartConfigChang
   const yValueLabel = pointForReadout
     ? chartState.yOption.tooltipFormatter(pointForReadout.y)
     : '--';
-  const stepValueLabel = formatAxisNumber(
-    chartState.step,
-    getFractionDigits(chartConfig.xField)
-  );
+  const handleDownloadClick = useCallback(() => {
+    if (!chartState.points.length) {
+      return;
+    }
 
+    const workbook = XLSXUtils.book_new();
+    const xLabel = xField ? xField.label : 'Input value';
+    const xHeader = xField?.unit ? `${xLabel} (${xField.unit})` : xLabel;
+    const safeXHeader = xHeader || 'Input value';
+    const yLabel = chartState.yOption.label || 'Output';
+    const safeYHeader = yLabel || 'Output';
+
+    const rows = chartState.points.map((point, index) => ({
+      Step: index + 1,
+      [safeXHeader]: point.x,
+      [safeYHeader]: point.y
+    }));
+
+    const worksheet = XLSXUtils.json_to_sheet(rows);
+    XLSXUtils.book_append_sheet(workbook, worksheet, 'Chart data');
+
+    const slugParts = [
+      chartState.yOption.value || 'output',
+      xField?.name || 'input'
+    ]
+      .map((part) =>
+        String(part)
+          .trim()
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '')
+      )
+      .filter(Boolean);
+
+    const dateStamp = new Date().toISOString().slice(0, 10);
+    const fileName = `${slugParts.join('-vs-') || 'chart-data'}-${dateStamp}.xlsx`;
+
+    writeXLSXFile(workbook, fileName);
+  }, [chartState.points, chartState.yOption, xField]);
   return (
     <div className="chart-section__inner">
       <div className="chart-header">
@@ -781,6 +816,17 @@ function ChartSection({ assumptions, chartConfig, chartState, onChartConfigChang
             <p className="chart-field__hint">Units: {xField.unit}</p>
           ) : null}
         </div>
+        <div className="chart-field">
+          <span>Download data</span>
+          <button
+            type="button"
+            className="secondary"
+            onClick={handleDownloadClick}
+            disabled={!chartState.points.length}
+          >
+            Download .xlsx
+          </button>
+        </div>
       </div>
 
       {chartState.error ? (
@@ -809,14 +855,6 @@ function ChartSection({ assumptions, chartConfig, chartState, onChartConfigChang
             <div className="chart-readout__item">
               <span>{chartState.yOption.label}</span>
               <strong>{yValueLabel}</strong>
-            </div>
-            <div className="chart-readout__item">
-              <span>Step size</span>
-              <strong>
-                {pointForReadout
-                  ? `${stepValueLabel}${xField?.unit ? ` ${xField.unit}` : ''}`
-                  : '--'}
-              </strong>
             </div>
           </div>
           {chartState.warning ? (
@@ -2026,5 +2064,12 @@ function positive(value) {
 function nonNegative(value) {
   return Number.isFinite(value) && value >= 0;
 }
+
+
+
+
+
+
+
 
 
