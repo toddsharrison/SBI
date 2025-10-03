@@ -106,9 +106,61 @@ const DEFAULT_CHART_CONFIG = {
   rangeEnd: '10'
 };
 
-const MAX_CHART_POINTS = 2000;
-const MAX_SWEEP_STEPS = 200;
+const MAX_CHART_POINTS = 5000;
+const MAX_SWEEP_STEPS = 1000;
 
+const RESOURCE_LINKS = [
+  {
+    href: 'https://www.aei.org/research-products/working-paper/build-your-own-golden-dome-a-framework-for-understanding-costs-choices-and-tradeoffs/',
+    title: 'Build Your Own Golden Dome: A Framework for Understanding Costs, Choices, and Tradeoffs',
+    label: 'Analysis',
+    type: 'paper',
+    accent: '#38bdf8',
+    accentSoft: 'rgba(56, 189, 248, 0.22)'
+  },
+  {
+    href: 'https://www.aei.org/op-eds/golden-dome-is-a-trillion-dollar-gambit/',
+    title: 'Golden Dome Is a Trillion Dollar Gambit',
+    label: 'Commentary',
+    type: 'opinion',
+    accent: '#f97316',
+    accentSoft: 'rgba(249, 115, 22, 0.2)'
+  },
+  {
+    href: 'https://www.aei.org/research-products/one-pager/build-your-own-golden-dome-a-framework-for-understanding-costs-choices-and-trade-offs/',
+    title: 'Build Your Own Golden Dome: A Framework for Understanding Costs, Choices, and Trade-offs',
+    label: 'One-pager',
+    type: 'brief',
+    accent: '#a855f7',
+    accentSoft: 'rgba(168, 85, 247, 0.2)'
+  },
+  {
+    href: 'https://www.aei.org/articles/is-trumps-golden-dome-a-brilliant-idea-or-a-gilded-boondoggle/',
+    title: 'Is Trump\'s Golden Dome a Brilliant Idea or a Gilded Boondoggle?',
+    label: 'Analysis',
+    type: 'paper',
+    accent: '#facc15',
+    accentSoft: 'rgba(250, 204, 21, 0.22)'
+  },
+  {
+    href: 'https://www.aei.org/podcast/the-golden-dome-missile-defense-system-with-todd-harrison/',
+    title: 'The Golden Dome Missile Defense System with Todd Harrison',
+    label: 'Podcast episode',
+    type: 'podcast',
+    accent: '#22d3ee',
+    accentSoft: 'rgba(34, 211, 238, 0.22)'
+  },
+  {
+    href: 'https://defensefutures.aei.org/',
+    title: 'Defense Futures Simulator',
+    label: 'Interactive site',
+    type: 'site',
+    accent: '#4ade80',
+    accentSoft: 'rgba(74, 222, 128, 0.2)'
+  }
+];
+
+const BIO_BLURB = 'Todd Harrison is a senior fellow at the American Enterprise Institute, where he focuses on defense strategy, defense budgeting, and space policy. He has published widely on issues such as the future of US Space Force, trade-offs in defense spending, and military personnel and readiness reform.';
 const CHART_Y_OPTIONS = [
   {
     value: 'totalSystemCostBillion',
@@ -246,6 +298,11 @@ export default function App() {
   return (
     <main className="app-shell">
       <header className="page-header">
+        <img
+          src={`${import.meta.env.BASE_URL}Header Image 2.png`}
+          alt="LEGO satellites orbiting Earth"
+          style={{ display: "block", margin: "0 auto 1.5rem", maxHeight: "300px", width: "auto", height: "100%" }}
+        />
         <h1>Space-Based Interceptor Calculator</h1>
         <p>
           Estimate the size and cost of a space-based interceptor (SBI) system using your own assumptions.
@@ -326,26 +383,26 @@ export default function App() {
         <div className="results-header">
           <h2>Results</h2>
           <p>
-            Last run: {formatTimestamp(lastRun)}
+            Last calculated: {formatTimestamp(lastRun)}
           </p>
         </div>
 
         <div className="result-grid">
           <article className="result-card">
             <h3>Total system cost</h3>
-            <p className="result-value">{formatUSDbillions(metrics.totalSystemCostBillion)}</p>
+            <p className="result-value" style={{ color: "#447E00" }}>{formatUSDbillions(metrics.totalSystemCostBillion)}</p>
             <p className="result-hint">Includes development, procurement, launch, and O&S costs over {formatInt(metrics.costEstimatePeriodYears)} years in constant dollars.</p>
           </article>
           
           <article className="result-card">
             <h3>Constellation size</h3>
-            <p className="result-value">{formatInt(metrics.constellationSize)}</p>
+            <p className="result-value" style={{ color: "#0486CE" }}>{formatInt(metrics.constellationSize)}</p>
             <p className="result-hint">Total number of interceptors required in the constellation.</p>
           </article>
 
           <article className="result-card">
             <h3># of launches required</h3>
-            <p className="result-value">{formatInt(metrics.launchCount)}</p>
+            <p className="result-value" style={{ color: "#F7B503" }}>{formatInt(metrics.launchCount)}</p>
             <p className="result-hint">Number of launches needed to deploy each generation of the constellation.</p>
           </article>
          
@@ -449,7 +506,7 @@ export default function App() {
                 <dd>{formatAltitude(metrics.interceptAltitudeKm)}</dd>
               </div>
               <div>
-                <dt>Delta V margin after divert</dt>
+                <dt>&#916;V margin after divert</dt>
                 <dd>{formatVelocity(metrics.deltaVMarginKmPerS)}</dd>
               </div>
               <div>
@@ -478,8 +535,102 @@ export default function App() {
           onChartConfigChange={updateChartConfig}
         />
       </section>
+
+      <section className="resources-section">
+        <h2>Resources</h2>
+        <p className="section-lede">Additional analysis, commentary, and interviews by the author on Golden Dome and the role of space-based interceptors.</p>
+        <div className="resources-layout">
+          <div className="resource-grid">
+            {RESOURCE_LINKS.map((resource) => (
+              <a
+                key={resource.href}
+                className="resource-card"
+                href={resource.href}
+                target="_blank"
+                rel="noreferrer"
+                style={{ '--accent': resource.accent, '--accent-soft': resource.accentSoft }}
+              >
+                <div className="resource-card__thumb">
+                  <ResourceIcon type={resource.type} />
+                </div>
+                <div className="resource-card__body">
+                  <span className="resource-card__label">{resource.label}</span>
+                  <span className="resource-card__title">{resource.title}</span>
+                </div>
+              </a>
+            ))}
+          </div>
+          <aside className="bio-card">
+            <h3>About Todd Harrison</h3>
+            <p>{BIO_BLURB}</p>
+            <a className="bio-card__link" href="https://www.aei.org/profile/todd-harrison/" target="_blank" rel="noreferrer">
+              Read the full bio
+            </a>
+          </aside>
+        </div>
+      </section>
     </main>
   );
+}
+
+function ResourceIcon({ type }) {
+  switch (type) {
+    case 'paper':
+    case 'article':
+      return (
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M8 3h7l5 5v13H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" />
+          <path d="M15 3v5h5" />
+          <line x1="10" y1="13" x2="18" y2="13" />
+          <line x1="10" y1="17" x2="18" y2="17" />
+        </svg>
+      );
+    case 'opinion':
+      return (
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M6.5 5h11A1.5 1.5 0 0 1 19 6.5v6A1.5 1.5 0 0 1 17.5 14H14l-3.5 4v-4H6.5A1.5 1.5 0 0 1 5 12.5v-6A1.5 1.5 0 0 1 6.5 5z" />
+          <line x1="9" y1="9" x2="15" y2="9" />
+          <line x1="9" y1="11.5" x2="13" y2="11.5" />
+        </svg>
+      );
+    case 'brief':
+      return (
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="5" y="4" width="14" height="16" rx="2" />
+          <line x1="10" y1="9" x2="17" y2="9" />
+          <line x1="10" y1="13" x2="17" y2="13" />
+          <circle cx="8" cy="9" r="0.9" fill="currentColor" stroke="none" />
+          <circle cx="8" cy="13" r="0.9" fill="currentColor" stroke="none" />
+        </svg>
+      );
+    case 'podcast':
+      return (
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="9" y="6" width="6" height="8" rx="3" />
+          <path d="M7 10v2a5 5 0 0 0 10 0v-2" />
+          <line x1="12" y1="19" x2="12" y2="15" />
+          <line x1="9" y1="19" x2="15" y2="19" />
+        </svg>
+      );
+    case 'site':
+      return (
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="7" />
+          <path d="M12 5v14" />
+          <path d="M5 12h14" />
+          <path d="M8.2 7.2c1.1 0.9 2.4 1.4 3.8 1.4s2.7-0.5 3.8-1.4" />
+          <path d="M15.8 16.8c-1.1-0.9-2.4-1.4-3.8-1.4s-2.7 0.5-3.8 1.4" />
+        </svg>
+      );
+    default:
+      return (
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="6" y="4" width="12" height="16" rx="2" />
+          <line x1="9" y1="9" x2="15" y2="9" />
+          <line x1="9" y1="13" x2="15" y2="13" />
+        </svg>
+      );
+  }
 }
 
 function ChartSection({ assumptions, chartConfig, chartState, onChartConfigChange }) {
@@ -551,7 +702,7 @@ function ChartSection({ assumptions, chartConfig, chartState, onChartConfigChang
       <div className="chart-header">
         <h2>Trade-off explorer</h2>
         <p>
-          Select an output metric and sweep an input parameter to see how results respond.
+          Test the sensitivity of key system metrics to an input parameter with all other inputs held constant.
         </p>
       </div>
 
@@ -587,10 +738,9 @@ function ChartSection({ assumptions, chartConfig, chartState, onChartConfigChang
         </label>
 
         <div className="chart-field chart-field--range">
-          <span>Sweep range</span>
+          <span>Range of horizontal axis</span>
           <div className="chart-range-inputs">
             <label>
-              <span>Start</span>
               <input
                 className="chart-input"
                 type="number"
@@ -600,9 +750,9 @@ function ChartSection({ assumptions, chartConfig, chartState, onChartConfigChang
                 min={xField?.min ?? undefined}
                 max={xField?.max ?? undefined}
               />
+              <span>Start</span>
             </label>
             <label>
-              <span>End</span>
               <input
                 className="chart-input"
                 type="number"
@@ -612,6 +762,7 @@ function ChartSection({ assumptions, chartConfig, chartState, onChartConfigChang
                 min={xField?.min ?? undefined}
                 max={xField?.max ?? undefined}
               />
+              <span>End</span>
             </label>
           </div>
           {xField?.unit ? (
@@ -680,7 +831,7 @@ function LineChart({ chartState, activeIndex, onActiveIndexChange, xAxisLabel })
 
   const width = 760;
   const height = 360;
-  const margin = { top: 18, right: 32, bottom: 56, left: 96 };
+  const margin = { top: 32, right: 32, bottom: 56, left: 96 };
   const innerWidth = width - margin.left - margin.right;
   const innerHeight = height - margin.top - margin.bottom;
 
@@ -846,6 +997,8 @@ function LineChart({ chartState, activeIndex, onActiveIndexChange, xAxisLabel })
         <text
           className="chart-axis__label"
           transform={`translate(18 ${margin.top + innerHeight / 2}) rotate(-90)`}
+          textAnchor="middle"
+          dominantBaseline="middle"
         >
           {chartState.yOption.axisLabel}
         </text>
@@ -1286,13 +1439,13 @@ function prepareInputs(rawInputs) {
   }
 
   if (!positive(numbers.maxDeltaVKmPerS)) {
-    validationErrors.push('Max Velocity (Delta V) must be greater than zero.');
+    validationErrors.push('Max Velocity (ΔV) must be greater than zero.');
   }
 
   if (!nonNegative(numbers.divertVelocityKmPerS)) {
     validationErrors.push('Divert velocity must be zero or greater.');
   } else if (numbers.divertVelocityKmPerS > numbers.maxDeltaVKmPerS) {
-    validationErrors.push('Divert velocity cannot exceed the total Delta V budget.');
+    validationErrors.push('Divert velocity cannot exceed the total ΔV budget.');
   }
 
   if (!positive(numbers.thrusterIspSeconds)) {
@@ -1797,7 +1950,7 @@ function formatSeconds(value) {
 
 function formatAcceleration(value) {
   if (!Number.isFinite(value)) return '--';
-  return `${decimalFormatter.format(value)} m/s�`;
+  return `${decimalFormatter.format(value)} m/s²`;
 }
 
 function formatVelocity(value) {
@@ -1857,3 +2010,5 @@ function positive(value) {
 function nonNegative(value) {
   return Number.isFinite(value) && value >= 0;
 }
+
+
