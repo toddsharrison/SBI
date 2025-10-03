@@ -11,6 +11,12 @@
   box-sizing: border-box;
 }
 
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
 body {
   margin: 0;
   min-height: 100vh;
@@ -414,6 +420,8 @@ button:disabled {
 }
 
 .chart-canvas {
+  width: 100%;
+  overflow-x: auto;
   padding: 1.4rem 1.5rem;
   border-radius: 18px;
   background: rgba(15, 23, 42, 0.5);
@@ -689,7 +697,13 @@ button:disabled {
     justify-content: center;
   }
 
+  .chart-canvas {
+    padding: 1.1rem 1rem;
+  }
+
   .chart-readout {
     grid-template-columns: 1fr;
   }
 }
+
+

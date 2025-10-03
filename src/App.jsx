@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { utils as XLSXUtils, writeFile as writeXLSXFile } from 'xlsx';
 
 const g0 = 9.81;
@@ -302,7 +302,14 @@ export default function App() {
         <img
           src={`${import.meta.env.BASE_URL}Header Image 2.png`}
           alt="LEGO satellites orbiting Earth"
-          style={{ display: "block", margin: "0 auto 1.5rem", maxHeight: "300px", width: "auto", height: "100%" }}
+          style={{
+            display: "block",
+            margin: "0 auto 1.5rem",
+            maxWidth: "min(100%, 560px)",
+            width: "100%",
+            maxHeight: "300px",
+            height: "auto"
+          }}
         />
         <h1>Space-Based Interceptor Calculator</h1>
         <p>
@@ -870,6 +877,45 @@ function ChartSection({ assumptions, chartConfig, chartState, onChartConfigChang
 
 function LineChart({ chartState, activeIndex, onActiveIndexChange, xAxisLabel }) {
   const { points } = chartState;
+  const containerRef = useRef(null);
+  const [canvasWidth, setCanvasWidth] = useState(760);
+
+  useEffect(() => {
+    const element = containerRef.current;
+    if (!element) {
+      return;
+    }
+
+    const applySize = (value) => {
+      if (!Number.isFinite(value) || value <= 0) {
+        return;
+      }
+      setCanvasWidth((previous) => (Math.abs(previous - value) < 0.5 ? previous : value));
+    };
+
+    const measure = () => {
+      applySize(element.clientWidth);
+    };
+
+    measure();
+
+    if (typeof ResizeObserver === 'function') {
+      const observer = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          applySize(entry.contentRect?.width ?? 0);
+        }
+      });
+
+      observer.observe(element);
+      return () => observer.disconnect();
+    }
+
+    if (typeof window !== 'undefined') {
+      const handleResize = () => measure();
+      window.addEventListener('resize', handleResize);
+      return () => window.removeEventListener('resize', handleResize);
+    }
+  }, []);
 
   if (!points.length) {
     return (
@@ -879,10 +925,10 @@ function LineChart({ chartState, activeIndex, onActiveIndexChange, xAxisLabel })
     );
   }
 
-  const width = 760;
-  const height = 360;
   const margin = { top: 32, right: 32, bottom: 56, left: 96 };
-  const innerWidth = width - margin.left - margin.right;
+  const width = Math.max(canvasWidth, margin.left + margin.right + 160);
+  const height = 360;
+  const innerWidth = Math.max(width - margin.left - margin.right, 1);
   const innerHeight = height - margin.top - margin.bottom;
 
   const xStart = Number.isFinite(chartState.xDomainMin) ? chartState.xDomainMin : chartState.xMin;
@@ -954,7 +1000,7 @@ function LineChart({ chartState, activeIndex, onActiveIndexChange, xAxisLabel })
   };
 
   return (
-    <div className="chart-canvas">
+    <div className="chart-canvas" ref={containerRef}>
       <svg
         className="chart-svg"
         viewBox={`0 0 ${width} ${height}`}
@@ -2064,12 +2110,4 @@ function positive(value) {
 function nonNegative(value) {
   return Number.isFinite(value) && value >= 0;
 }
-
-
-
-
-
-
-
-
 
