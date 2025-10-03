@@ -1242,6 +1242,10 @@ function buildChartState(baseAssumptions, chartConfig) {
   const xPad = (xMax - xMin) * 0.05 || Math.max(Math.abs(xMax) || 0, 1) * 0.05;
   const yPad = (yMax - yMin) * 0.1 || Math.max(Math.abs(yMax) || 0, 1) * 0.05;
 
+  const y0 = 0;
+  const yMaxAdj = Math.max(yMax, y0); // ensure top is ≥ 0
+  const yPadTop = (yMaxAdj - y0) * 0.1 || 1; // avoid zero span
+  
   return {
     field,
     yOption,
@@ -1256,8 +1260,8 @@ function buildChartState(baseAssumptions, chartConfig) {
     yMax,
     xDomainMin: xMin - xPad,
     xDomainMax: xMax + xPad,
-    yDomainMin: yMin - yPad,
-    yDomainMax: yMax + yPad
+    yDomainMin: y0,
+    yDomainMax: yMaxAdj + yPadTop
   };
 }
 
