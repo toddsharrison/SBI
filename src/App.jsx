@@ -409,7 +409,7 @@ export default function App() {
           </article>
 
           <article className="result-card">
-            <h3># of launches required</h3>
+            <h3>Launches required</h3>
             <p className="result-value" style={{ color: "#F7B503" }}>{formatInt(metrics.launchCount)}</p>
             <p className="result-hint">Number of launches needed to deploy each generation of the constellation.</p>
           </article>
