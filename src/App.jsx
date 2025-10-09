@@ -27,9 +27,9 @@ const FORM_SECTIONS = [
     title: 'Threat parameters',
     fields: [
       { name: 'salvoSize', label: 'Salvo size', defaultValue: '1', unit: 'missiles', min: 1, max: 1000, step: '1', hint: 'Maximum number of missiles launched at once the systems should be able to intercept.' },
-      { name: 'interceptAltitudeKm', label: 'Intercept altitude', defaultValue: '200', unit: 'km', min: 10, max: 10000, step: '1', hint: 'Minimum altitude at which threats will be engaged. If below 100km, additional mass should be added to the kill vehicle to accomodate atmospheric re-entry (heat sheilding, etc.).' },
+      { name: 'interceptAltitudeKm', label: 'Intercept altitude', defaultValue: '200', unit: 'km', min: 50, max: 10000, step: '5', hint: 'Minimum altitude at which threats will be engaged. If below 100km, additional mass should be added to the kill vehicle to accomodate atmospheric re-entry (heat sheilding, etc.).' },
       { name: 'maxLatitudeCoverageDeg', label: 'Max latitude coverage', defaultValue: '90', unit: 'deg', min: 1, max: 90, step: '1', hint: 'Maximum latitude where SBIs will provide coverage. For global coverage, use 90 degrees. For North Korea and Iran only, use 45 degrees.' },
-      { name: 'flyoutTimeSeconds', label: 'Flyout time', defaultValue: '120.0', unit: 's', min: 10, max: 1800, step: '.1', hint: 'The time between when the command is given to fire an interceptor and the latest point at which it can hit a target.' }
+      { name: 'flyoutTimeSeconds', label: 'Flyout time', defaultValue: '120.0', unit: 's', min: 10, max: 1800, step: '1', hint: 'The time between when the command is given to fire an interceptor and the latest point at which it can hit a target.' }
     ]
   },
   {
@@ -584,8 +584,10 @@ export default function App() {
           <p>This model makes the following simplifying assumptions:</p>
           <ul>
             <li>The number of interceptors needed in the constellation assumes that they are evenly spaced around the Earth. In reality, the satellites would be unevenly distributed in orbital planes, likely in a hybrid Walker constellation. The number of interceptors calculated is therefore a best case assumption, and the actual number would be somewhat higher.</li>
+            <li>The flyout range does not account for deceleration that would occur if the interceptor attempts to strike a target at a low altitude. Deceleration should be minimal at intercepts above 100km.</li>
             <li>The propellant mass calculations assume both the interceptor and kill vehicle use thrusters with the same Isp.</li>
             <li>The cost calculations assume that the learning curve resets with each generation of interceptors. This means that each time the constellation must be replenished over the period of analysis, the unit cost of the interceptors reverts to the original first unit cost and then follows the learning curve again. The same assumption is also used for launch costs.</li>
+            <li>Costs do not include spares or the expense of safely disposing of interceptors that fail on-orbit.</li>
           </ul>
         </details>
       </section>
@@ -1588,16 +1590,16 @@ function prepareInputs(rawInputs) {
     numbers.salvoSize = Math.max(1, Math.round(numbers.salvoSize));
   }
 
-  if (!positive(numbers.interceptAltitudeKm)) {
-    validationErrors.push('Intercept altitude must be greater than zero.');
+  if (numbers.interceptAltitudeKm < 50) {
+    validationErrors.push('Intercept altitude must be at least 50km.');
   } else if (numbers.interceptAltitudeKm > numbers.sbiOrbitAltitudeKm) {
     validationErrors.push('Intercept altitude cannot exceed the SBI orbit altitude.');
   }
 
   if (!Number.isFinite(numbers.maxLatitudeCoverageDeg)) {
     validationErrors.push('Max latitude coverage must be a number.');
-  } else if (numbers.maxLatitudeCoverageDeg < 0 || numbers.maxLatitudeCoverageDeg > 180) {
-    validationErrors.push('Max latitude coverage must be between 0 and 180 degrees.');
+  } else if (numbers.maxLatitudeCoverageDeg < 0 || numbers.maxLatitudeCoverageDeg > 90) {
+    validationErrors.push('Max latitude coverage must be between 0 and 90 degrees.');
   }
 
   if (!positive(numbers.flyoutTimeSeconds)) {
@@ -1614,8 +1616,8 @@ function prepareInputs(rawInputs) {
 
   if (!Number.isFinite(numbers.interceptorLearningPercent)) {
     validationErrors.push('Interceptor learning percent must be a number.');
-  } else if (numbers.interceptorLearningPercent <= 0 || numbers.interceptorLearningPercent > 100) {
-    validationErrors.push('Interceptor learning percent must be between 0% and 100%.');
+  } else if (numbers.interceptorLearningPercent < 70 || numbers.interceptorLearningPercent > 100) {
+    validationErrors.push('Interceptor learning percent must be between 70% and 100%.');
   }
 
   if (!nonNegative(numbers.operatingSupportCostPerYearMillion)) {
@@ -1638,8 +1640,8 @@ function prepareInputs(rawInputs) {
 
   if (!Number.isFinite(numbers.launchLearningPercent)) {
     validationErrors.push('Launch learning percent must be a number.');
-  } else if (numbers.launchLearningPercent <= 0 || numbers.launchLearningPercent > 100) {
-    validationErrors.push('Launch learning percent must be between 0% and 100%.');
+  } else if (numbers.launchLearningPercent < 70 || numbers.launchLearningPercent > 100) {
+    validationErrors.push('Launch learning percent must be between 70% and 100%.');
   }
 
   numbers.killVehicleDryMassKg = roundToTenth(numbers.killVehicleDryMassKg);
