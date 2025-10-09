@@ -8,7 +8,7 @@ const FORM_SECTIONS = [
     id: 'sbi-performance',
     title: 'Interceptor performance',
     fields: [
-      { name: 'sbiOrbitAltitudeKm', label: 'SBI orbit altitude', defaultValue: '300', unit: 'km', min: 150, max: 22500, step: '1', hint: 'Orbital altitude at which SBIs will be stationed.' },
+      { name: 'sbiOrbitAltitudeKm', label: 'SBI orbit altitude', defaultValue: '300', unit: 'km', min: 150, max: 22500, step: '5', hint: 'Orbital altitude at which SBIs will be stationed.' },
       { name: 'averageAccelerationG', label: 'Average acceleration', defaultValue: '15.0', unit: 'g', min: 1, max: 30, step: '0.1', hint: 'Average acceleration of the interceptor over its flight profile.' },
       { name: 'maxDeltaVKmPerS', label: 'Max velocity (ΔV)', defaultValue: '6.0', unit: 'km/s', min: 0.1, max: 20, step: '0.1', hint: 'Maximum change in velocity of the interceptor.' },
       { name: 'divertVelocityKmPerS', label: 'Divert velocity', defaultValue: '2.5', unit: 'km/s', min: 0, max: 10, step: '0.1', hint: 'Divert velocity of the kill vehicle for terminal maneuvers.' },
@@ -228,7 +228,7 @@ function formatInputValue(fieldName, raw) {
 export default function App() {
   const [inputs, setInputs] = useState(() => ({ ...DEFAULT_INPUTS }));
   const [scenario, setScenario] = useState(() => computeScenario(DEFAULT_NUMERIC_INPUTS));
-  const [errors, setErrors] = useState([]);
+  const [errors, setErrors] = useState(() => collectScenarioMessages(computeScenario(DEFAULT_NUMERIC_INPUTS)));
   const [lastRun, setLastRun] = useState(() => new Date());
   const [chartConfig, setChartConfig] = useState(() => ({ ...DEFAULT_CHART_CONFIG }));
   const chartState = useMemo(
@@ -251,10 +251,11 @@ export default function App() {
 
     const { numbers, errors: validationErrors } = prepareInputs(mergedInputs);
     if (validationErrors.length === 0) {
-      setErrors([]);
-      setScenario(computeScenario(numbers));
+      const nextScenario = computeScenario(numbers);
+      setScenario(nextScenario);
       setLastRun(new Date());
       updateScenarioUrl(numbers);
+      setErrors(collectScenarioMessages(nextScenario));
     } else {
       setErrors(validationErrors);
     }
@@ -277,11 +278,11 @@ export default function App() {
       return;
     }
 
-    setErrors([]);
     const nextScenario = computeScenario(numbers);
     setScenario(nextScenario);
     setLastRun(new Date());
     updateScenarioUrl(numbers);
+    setErrors(collectScenarioMessages(nextScenario));
   };
 
   const handleReset = () => {
@@ -289,9 +290,9 @@ export default function App() {
     setChartConfig(() => ({ ...DEFAULT_CHART_CONFIG }));
     const nextScenario = computeScenario(DEFAULT_NUMERIC_INPUTS);
     setScenario(nextScenario);
-    setErrors([]);
     setLastRun(new Date());
     updateScenarioUrl(DEFAULT_NUMERIC_INPUTS);
+    setErrors(collectScenarioMessages(nextScenario));
   };
 
   const { assumptions, metrics } = scenario;
@@ -322,17 +323,6 @@ export default function App() {
         <p className="section-lede">
           Enter your values for interceptor performance, threat parameters, cost parameters, and launch vehicle capabilities. Units for each entry are shown beside the input.
         </p>
-
-        {errors.length > 0 && (
-          <div className="alert" role="alert">
-            <h3>We need a couple adjustments:</h3>
-            <ul>
-              {errors.map((message) => (
-                <li key={message}>{message}</li>
-              ))}
-            </ul>
-          </div>
-        )}
 
         <form className="scenario-form" onSubmit={handleSubmit}>
           {FORM_SECTIONS.map((section) => (
@@ -384,6 +374,17 @@ export default function App() {
               Reset defaults
             </button>
           </div>
+
+          {errors.length > 0 && (
+            <div className="alert" role="alert">
+              <h3>We need a couple adjustments:</h3>
+              <ul>
+                {errors.map((message) => (
+                  <li key={message}>{message}</li>
+                ))}
+              </ul>
+            </div>
+          )}
         </form>
       </section>
 
@@ -1528,6 +1529,76 @@ function findClosestIndex(points, target) {
 }
 
 
+function calculateInterceptorMasses(assumptions) {
+  const thrusterIsp = assumptions.thrusterIspSeconds;
+  const killVehicleDryMassKg = assumptions.killVehicleDryMassKg;
+  const interceptorBodyDryMassKg = assumptions.interceptorBodyDryMassKg;
+  const supportModuleDryMassKg = assumptions.supportModuleDryMassKg;
+  const divertVelocityKmPerS = assumptions.divertVelocityKmPerS;
+  const maxDeltaVKmPerS = assumptions.maxDeltaVKmPerS;
+
+  const hasDryMassInputs =
+    Number.isFinite(killVehicleDryMassKg) &&
+    Number.isFinite(interceptorBodyDryMassKg) &&
+    Number.isFinite(supportModuleDryMassKg);
+
+  const interceptorDryMassKg = hasDryMassInputs
+    ? killVehicleDryMassKg + interceptorBodyDryMassKg + supportModuleDryMassKg
+    : Number.NaN;
+
+  let killVehiclePropellantMassKg = Number.NaN;
+  if (
+    Number.isFinite(killVehicleDryMassKg) &&
+    killVehicleDryMassKg >= 0 &&
+    Number.isFinite(thrusterIsp) &&
+    thrusterIsp > 0 &&
+    Number.isFinite(divertVelocityKmPerS)
+  ) {
+    const exponent = (divertVelocityKmPerS * 1000) / (g0 * thrusterIsp);
+    if (Number.isFinite(exponent)) {
+      const massRatio = Math.exp(exponent);
+      if (Number.isFinite(massRatio)) {
+        killVehiclePropellantMassKg = killVehicleDryMassKg * (massRatio - 1);
+      }
+    }
+  }
+
+  let interceptorPropellantMassKg = Number.NaN;
+  const preMainBurnMassKg = Number.isFinite(killVehiclePropellantMassKg)
+    ? killVehicleDryMassKg + killVehiclePropellantMassKg + interceptorBodyDryMassKg
+    : Number.NaN;
+
+  if (
+    Number.isFinite(preMainBurnMassKg) &&
+    preMainBurnMassKg >= 0 &&
+    Number.isFinite(thrusterIsp) &&
+    thrusterIsp > 0 &&
+    Number.isFinite(maxDeltaVKmPerS)
+  ) {
+    const exponent = (maxDeltaVKmPerS * 1000) / (g0 * thrusterIsp);
+    if (Number.isFinite(exponent)) {
+      const massRatio = Math.exp(exponent);
+      if (Number.isFinite(massRatio)) {
+        interceptorPropellantMassKg = preMainBurnMassKg * (massRatio - 1);
+      }
+    }
+  }
+
+  const interceptorTotalMassKg =
+    Number.isFinite(interceptorDryMassKg) &&
+    Number.isFinite(killVehiclePropellantMassKg) &&
+    Number.isFinite(interceptorPropellantMassKg)
+      ? interceptorDryMassKg + killVehiclePropellantMassKg + interceptorPropellantMassKg
+      : Number.NaN;
+
+  return {
+    killVehiclePropellantMassKg,
+    interceptorPropellantMassKg,
+    interceptorDryMassKg,
+    interceptorTotalMassKg
+  };
+}
+
 function prepareInputs(rawInputs) {
   const numbers = convertToNumeric(rawInputs);
   const validationErrors = [];
@@ -1648,6 +1719,18 @@ function prepareInputs(rawInputs) {
   numbers.interceptorBodyDryMassKg = roundToTenth(numbers.interceptorBodyDryMassKg);
   numbers.supportModuleDryMassKg = roundToTenth(numbers.supportModuleDryMassKg);
 
+  const { interceptorTotalMassKg } = calculateInterceptorMasses(numbers);
+  if (
+    Number.isFinite(interceptorTotalMassKg) &&
+    Number.isFinite(numbers.payloadCapacityPerVehicleKg) &&
+    numbers.payloadCapacityPerVehicleKg > 0 &&
+    interceptorTotalMassKg > numbers.payloadCapacityPerVehicleKg
+  ) {
+    validationErrors.push(
+      'The interceptor mass is greater than the payload capacity of the launch vehicle. Consider reducing interceptor performance or using a higher capacity launch vehicle.'
+    );
+  }
+
   return { numbers, errors: validationErrors };
 }
 function computeScenario(values) {
@@ -1668,40 +1751,12 @@ function computeScenario(values) {
 
   const deltaVMarginKmPerS = assumptions.maxDeltaVKmPerS - assumptions.divertVelocityKmPerS;
 
-  const thrusterIsp = assumptions.thrusterIspSeconds;
-
-  let killVehiclePropellantMassKg = Number.NaN;
-  if (assumptions.killVehicleDryMassKg >= 0 && thrusterIsp > 0) {
-    const exponent = (assumptions.divertVelocityKmPerS * 1000) / (g0 * thrusterIsp);
-    if (Number.isFinite(exponent)) {
-      const massRatio = Math.exp(exponent);
-      if (Number.isFinite(massRatio)) {
-        killVehiclePropellantMassKg = assumptions.killVehicleDryMassKg * (massRatio - 1);
-      }
-    }
-  }
-
-  let interceptorPropellantMassKg = Number.NaN;
-  const preMainBurnMassKg = Number.isFinite(killVehiclePropellantMassKg)
-    ? assumptions.killVehicleDryMassKg + killVehiclePropellantMassKg + assumptions.interceptorBodyDryMassKg
-    : Number.NaN;
-
-  if (Number.isFinite(preMainBurnMassKg) && preMainBurnMassKg >= 0 && thrusterIsp > 0) {
-    const exponent = (assumptions.maxDeltaVKmPerS * 1000) / (g0 * thrusterIsp);
-    if (Number.isFinite(exponent)) {
-      const massRatio = Math.exp(exponent);
-      if (Number.isFinite(massRatio)) {
-        interceptorPropellantMassKg = preMainBurnMassKg * (massRatio - 1);
-      }
-    }
-  }
-
-  const interceptorDryMassKg =
-    assumptions.killVehicleDryMassKg + assumptions.interceptorBodyDryMassKg + assumptions.supportModuleDryMassKg;
-
-  const interceptorTotalMassKg = Number.isFinite(killVehiclePropellantMassKg) && Number.isFinite(interceptorPropellantMassKg)
-    ? interceptorDryMassKg + killVehiclePropellantMassKg + interceptorPropellantMassKg
-    : Number.NaN;
+  const {
+    killVehiclePropellantMassKg,
+    interceptorPropellantMassKg,
+    interceptorDryMassKg,
+    interceptorTotalMassKg
+  } = calculateInterceptorMasses(assumptions);
 
   const averageAccelerationMS2 = assumptions.averageAccelerationG * 9.80665;
   const averageAccelerationKmPerS2 = averageAccelerationMS2 / 1000;
@@ -1892,6 +1947,20 @@ function computeScenario(values) {
       costEstimatePeriodYears: assumptions.costEstimatePeriodYears
     }
   };
+}
+
+function collectScenarioMessages(scenario) {
+  if (!scenario || !scenario.metrics) {
+    return [];
+  }
+
+  const messages = [];
+
+  if (scenario.metrics.interceptorFlyoutRangeMessage) {
+    messages.push(scenario.metrics.interceptorFlyoutRangeMessage);
+  }
+
+  return messages;
 }
 
 function computeInterceptorsPerThreat(singleShotPkPercent, desiredCompositePkPercent) {
