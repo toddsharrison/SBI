@@ -589,6 +589,7 @@ export default function App() {
             <li>The propellant mass calculations assume both the interceptor and kill vehicle use thrusters with the same Isp.</li>
             <li>The cost calculations assume that the learning curve resets with each generation of interceptors. This means that each time the constellation must be replenished over the period of analysis, the unit cost of the interceptors reverts to the original first unit cost and then follows the learning curve again. The same assumption is also used for launch costs.</li>
             <li>Costs do not include spares or the expense of safely disposing of interceptors that fail on-orbit.</li>
+            <li>A previous version of the calculator (prior to 10/19/2025) used a simplfying assumption to calculate the fraction of the area around the Earth each interceptor could reach. This assumption was the same as used by APS in its 2004 study. It works well for boost phase interceptors as described in the APS analysis, but it becomes less accurate for interceptors in higher orbits with longer flyout times, such as midcourse interceptors. The updated calculator now uses a more accurate calculation for the curved area of the spherical cap each interceptor's flyout radius intercepts. The number of interceptors required is now ~1.5% higher for boost-phase SBIs and ~15-20% higher for midcourse SBIs.</li>
           </ul>
         </details>
       </section>
