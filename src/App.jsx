@@ -1780,24 +1780,36 @@ function computeScenario(values) {
     interceptorFlyoutRangeMessage = 'Acceleration inputs result in an invalid time to max velocity.';
   }
 
-  const altitudeDeltaKm = assumptions.sbiOrbitAltitudeKm - assumptions.interceptAltitudeKm;
+  const earthRadiusKm = 6378.1;
   let coverageRadiusKm = Number.NaN;
 
-  if (Number.isFinite(interceptorFlyoutRangeKm)) {
-    const radicand = Math.pow(interceptorFlyoutRangeKm, 2) - Math.pow(altitudeDeltaKm, 2);
-    if (radicand >= 0) {
-      coverageRadiusKm = Math.sqrt(radicand);
+  if (
+    Number.isFinite(interceptorFlyoutRangeKm) &&
+    Number.isFinite(assumptions.sbiOrbitAltitudeKm) &&
+    Number.isFinite(assumptions.interceptAltitudeKm)
+  ) {
+    const orbitalRadiusKm = earthRadiusKm + assumptions.sbiOrbitAltitudeKm;
+    const interceptRadiusKm = earthRadiusKm + assumptions.interceptAltitudeKm;
+    const denominator = 2 * orbitalRadiusKm;
+
+    if (Number.isFinite(orbitalRadiusKm) && Math.abs(denominator) > Number.EPSILON) {
+      const baseTerm = Math.pow(orbitalRadiusKm, 2) + Math.pow(interceptRadiusKm, 2) - Math.pow(interceptorFlyoutRangeKm, 2);
+      const innerTerm = interceptRadiusKm - baseTerm / denominator;
+      const candidateCoverage = 2 * Math.PI * interceptRadiusKm * innerTerm;
+
+      if (Number.isFinite(candidateCoverage) && candidateCoverage > 0) {
+        coverageRadiusKm = candidateCoverage;
+      }
     }
   }
 
-  const earthRadiusKm = 6378.1;
   const earthCoverageSqKm = Number.isFinite(assumptions.maxLatitudeCoverageDeg)
     ? 4 * Math.PI * Math.pow(earthRadiusKm + assumptions.interceptAltitudeKm, 2) * Math.sin((assumptions.maxLatitudeCoverageDeg * Math.PI) / 180)
     : Number.NaN;
 
   let constellationSize = Number.NaN;
   if (Number.isFinite(coverageRadiusKm) && coverageRadiusKm > 0 && Number.isFinite(earthCoverageSqKm) && earthCoverageSqKm > 0) {
-    const coverageAreaPerInterceptor = Math.PI * Math.pow(coverageRadiusKm, 2);
+    const coverageAreaPerInterceptor = coverageRadiusKm; /*When I calculated coverageRadiusKm above I was really calculating the area covered, so this fixes that.*/
     const rawConstellation = (earthCoverageSqKm / coverageAreaPerInterceptor) * assumptions.salvoSize * interceptorsPerThreat;
     if (Number.isFinite(rawConstellation) && rawConstellation > 0) {
       constellationSize = Math.max(1, Math.ceil(rawConstellation));
