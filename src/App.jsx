@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { toPng } from 'html-to-image';
 import { utils as XLSXUtils, writeFile as writeXLSXFile } from 'xlsx';
 
 const g0 = 9.81;
@@ -15,8 +16,8 @@ const FORM_SECTIONS = [
       { name: 'thrusterIspSeconds', label: 'Thruster performance (Isp)', defaultValue: '240', unit: 's', min: 100, max: 1000, step: '1', hint: 'Specific impulse for the interceptor and kill vehicle thrusters.' },
       { name: 'killVehicleDryMassKg', label: 'Kill vehicle dry mass', defaultValue: '25.0', unit: 'kg', min: 1, step: '0.1', hint: 'Total mass of the kill vehicle (structure, sensors, thrusters, avionics, etc.) not including propellant.' },
       { name: 'interceptorBodyDryMassKg', label: 'Interceptor body dry mass', defaultValue: '25.0', unit: 'kg', min: 1, step: '0.1', hint: 'Total mass of the interceptor (structure, thrusters, avionics, etc.) not including the kill vehicle or propellant.' },
-      { name: 'supportModuleDryMassKg', label: 'Support module dry mass', defaultValue: '50.0', unit: 'kg', min: 1, step: '0.1', hint: 'Mass of the module that houses the interceptor in orbit for power, communications, station keeping, etc. that is left behind when the interceptor fires. If multiple interceptors are housed together, this is the fraction of the total module mass allocated for each interceptor.'},
-      { name: 'sbiLifeExpectancyYears', label: 'SBI life expectancy', defaultValue: '5', unit: 'years', min: 1, max: 20, step: '1', hint: 'How long each interceptor is expected to last in orbit before replacement.' },
+      { name: 'supportModuleDryMassKg', label: 'Support module dry mass', defaultValue: '50', unit: 'kg', min: 1, step: '1', hint: 'Mass of the module that houses the interceptor in orbit for power, communications, station keeping, etc. that is left behind when the interceptor fires. If multiple interceptors are housed together, this is the fraction of the total module mass allocated for each interceptor.'},
+      { name: 'sbiLifeExpectancyYears', label: 'SBI life expectancy', defaultValue: '5', unit: 'years', min: 1, max: 20, step: '0.1', hint: 'How long each interceptor is expected to last in orbit before replacement.' },
       { name: 'killProbabilityPercent', label: 'Kill probability (Pk)', defaultValue: '80.0', unit: '%', min: 1, max: 99.9, step: '0.1', hint: 'Probability that a single interceptor will destory its target.' },
       { name: 'compositeKillProbabilityPercent', label: 'Composite kill probability', defaultValue: '96.0', unit: '%', min: 1, max: 99.9, step: '0.1', hint: 'Desired overall probability that each threat will be destroyed. In combination with the single-shot Pk, this determines how many interceptors must be fired at each threat.' }
       
@@ -99,6 +100,28 @@ const decimalFormatter = new Intl.NumberFormat('en-US', {
 const twoDecimalFormatter = new Intl.NumberFormat('en-US', {
   maximumFractionDigits: 2
 });
+
+const CHART_COLORS = {
+  gridLine: 'rgba(148, 163, 184, 0.24)',
+  gridLineVerticalDash: '4 4',
+  crosshair: 'rgba(148, 163, 184, 0.35)',
+  crosshairDash: '4 4',
+  crosshairWidth: 1.2,
+  lineStroke: '#38bdf8',
+  lineWidth: 2.6,
+  axisLine: 'rgba(148, 163, 184, 0.45)',
+  axisText: 'rgba(226, 232, 240, 0.85)',
+  axisLabel: 'rgba(226, 232, 240, 0.92)',
+  axisLabelLetterSpacing: '0.05em',
+  pointFill: '#38bdf8',
+  pointStroke: 'rgba(15, 23, 42, 0.92)',
+  pointStrokeWidth: 2
+};
+
+const AXIS_FONT_SIZE_PX = 12.5;
+const AXIS_LABEL_FONT_SIZE_PX = 14.7;
+const CHART_FONT_FAMILY =
+  '"Inter", "Inter var", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
 
 const DEFAULT_CHART_CONFIG = {
   yField: 'interceptorMassKg',
@@ -573,7 +596,7 @@ export default function App() {
             <h3>About Todd Harrison</h3>
             <p>{BIO_BLURB}</p>
             <a className="bio-card__link" href="https://www.aei.org/profile/todd-harrison/" target="_blank" rel="noreferrer">
-              Read the full bio
+              Link to full bio
             </a>
           </aside>
         </div>
@@ -660,6 +683,27 @@ function ResourceIcon({ type }) {
 function ChartSection({ assumptions, chartConfig, chartState, onChartConfigChange }) {
   const xField = FIELD_CONFIG_MAP[chartConfig.xField] ?? null;
   const [activeIndex, setActiveIndex] = useState(null);
+  const chartImageRef = useRef(null);
+
+  const slugParts = useMemo(() => {
+    return [
+      chartState.yOption.value || 'output',
+      xField?.name || chartConfig.xField || 'input'
+    ]
+      .map((part) =>
+        String(part)
+          .trim()
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '')
+      )
+      .filter(Boolean);
+  }, [chartConfig.xField, chartState.yOption.value, xField]);
+
+  const baseFileName = useMemo(
+    () => (slugParts.length ? slugParts.join('-vs-') : 'chart-data'),
+    [slugParts]
+  );
 
   useEffect(() => {
     if (!chartState.points.length) {
@@ -737,24 +781,41 @@ function ChartSection({ assumptions, chartConfig, chartState, onChartConfigChang
     const worksheet = XLSXUtils.json_to_sheet(rows);
     XLSXUtils.book_append_sheet(workbook, worksheet, 'Chart data');
 
-    const slugParts = [
-      chartState.yOption.value || 'output',
-      xField?.name || 'input'
-    ]
-      .map((part) =>
-        String(part)
-          .trim()
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, '-')
-          .replace(/^-+|-+$/g, '')
-      )
-      .filter(Boolean);
-
     const dateStamp = new Date().toISOString().slice(0, 10);
-    const fileName = `${slugParts.join('-vs-') || 'chart-data'}-${dateStamp}.xlsx`;
+    const fileName = `${baseFileName}-${dateStamp}.xlsx`;
 
     writeXLSXFile(workbook, fileName);
-  }, [chartState.points, chartState.yOption, xField]);
+  }, [baseFileName, chartState.points, chartState.yOption, xField]);
+
+  const handleImageDownloadClick = useCallback(async () => {
+    if (!chartState.points.length || !chartImageRef.current) {
+      return;
+    }
+
+    try {
+      const dataUrl = await toPng(chartImageRef.current, {
+        cacheBust: true,
+        pixelRatio: typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1,
+        backgroundColor: '#0f172a',
+        style: {
+          padding: '1.4rem 1.5rem',
+          borderRadius: '18px',
+          border: '1px solid rgba(148, 163, 184, 0.2)',
+          boxSizing: 'border-box',
+          backgroundColor: 'rgba(15, 23, 42, 0.5)',
+          overflow: 'hidden'
+        }
+      });
+
+      const dateStamp = new Date().toISOString().slice(0, 10);
+      const link = document.createElement('a');
+      link.download = `${baseFileName}-${dateStamp}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch (error) {
+      console.error('Failed to export chart image.', error);
+    }
+  }, [baseFileName, chartState.points]);
   return (
     <div className="chart-section__inner">
       <div className="chart-header">
@@ -827,16 +888,26 @@ function ChartSection({ assumptions, chartConfig, chartState, onChartConfigChang
             <p className="chart-field__hint">Units: {xField.unit}</p>
           ) : null}
         </div>
-        <div className="chart-field">
-          <span>Download data</span>
-          <button
-            type="button"
-            className="secondary"
-            onClick={handleDownloadClick}
-            disabled={!chartState.points.length}
-          >
-            Download .xlsx
-          </button>
+        <div className="chart-field chart-field--downloads">
+          <span>Downloads</span>
+          <div className="chart-download-buttons">
+            <button
+              type="button"
+              className="secondary download-button download-button--xlsx"
+              onClick={handleDownloadClick}
+              disabled={!chartState.points.length}
+            >
+              Download Data (XLSX)
+            </button>
+            <button
+              type="button"
+              className="secondary download-button download-button--png"
+              onClick={handleImageDownloadClick}
+              disabled={!chartState.points.length}
+            >
+              Download Chart Image (PNG)
+            </button>
+          </div>
         </div>
       </div>
 
@@ -853,6 +924,7 @@ function ChartSection({ assumptions, chartConfig, chartState, onChartConfigChang
             xAxisLabel={
               xField ? `${xField.label}${xField.unit ? ` (${xField.unit})` : ''}` : 'Input value'
             }
+            snapshotRef={chartImageRef}
           />
           <div className="chart-readout">
             <div className="chart-readout__item">
@@ -879,10 +951,21 @@ function ChartSection({ assumptions, chartConfig, chartState, onChartConfigChang
   );
 }
 
-function LineChart({ chartState, activeIndex, onActiveIndexChange, xAxisLabel }) {
+function LineChart({ chartState, activeIndex, onActiveIndexChange, xAxisLabel, snapshotRef }) {
   const { points } = chartState;
   const containerRef = useRef(null);
   const [canvasWidth, setCanvasWidth] = useState(760);
+  const assignContainerRef = useCallback(
+    (node) => {
+      containerRef.current = node;
+      if (typeof snapshotRef === 'function') {
+        snapshotRef(node);
+      } else if (snapshotRef && typeof snapshotRef === 'object') {
+        snapshotRef.current = node;
+      }
+    },
+    [snapshotRef]
+  );
 
   useEffect(() => {
     const element = containerRef.current;
@@ -1004,7 +1087,7 @@ function LineChart({ chartState, activeIndex, onActiveIndexChange, xAxisLabel })
   };
 
   return (
-    <div className="chart-canvas" ref={containerRef}>
+    <div className="chart-canvas" ref={assignContainerRef}>
       <svg
         className="chart-svg"
         viewBox={`0 0 ${width} ${height}`}
@@ -1022,6 +1105,8 @@ function LineChart({ chartState, activeIndex, onActiveIndexChange, xAxisLabel })
               x2={innerWidth}
               y1={yScale(tick)}
               y2={yScale(tick)}
+              stroke={CHART_COLORS.gridLine}
+              strokeWidth={1}
             />
           ))}
           {xTicks.map((tick) => (
@@ -1032,9 +1117,20 @@ function LineChart({ chartState, activeIndex, onActiveIndexChange, xAxisLabel })
               x2={xScale(tick)}
               y1={0}
               y2={innerHeight}
+              stroke={CHART_COLORS.gridLine}
+              strokeWidth={1}
+              strokeDasharray={CHART_COLORS.gridLineVerticalDash}
             />
           ))}
-          <path className="chart-line" d={pathData} />
+          <path
+            className="chart-line"
+            d={pathData}
+            fill="none"
+            stroke={CHART_COLORS.lineStroke}
+            strokeWidth={CHART_COLORS.lineWidth}
+            strokeLinejoin="round"
+            strokeLinecap="round"
+          />
           {activePoint ? (
             <g className="chart-focus">
               <line
@@ -1043,6 +1139,9 @@ function LineChart({ chartState, activeIndex, onActiveIndexChange, xAxisLabel })
                 x2={xScale(activePoint.x)}
                 y1={0}
                 y2={innerHeight}
+                stroke={CHART_COLORS.crosshair}
+                strokeWidth={CHART_COLORS.crosshairWidth}
+                strokeDasharray={CHART_COLORS.crosshairDash}
               />
               <line
                 className="chart-crosshair"
@@ -1050,12 +1149,18 @@ function LineChart({ chartState, activeIndex, onActiveIndexChange, xAxisLabel })
                 x2={innerWidth}
                 y1={yScale(activePoint.y)}
                 y2={yScale(activePoint.y)}
+                stroke={CHART_COLORS.crosshair}
+                strokeWidth={CHART_COLORS.crosshairWidth}
+                strokeDasharray={CHART_COLORS.crosshairDash}
               />
               <circle
                 className="chart-point"
                 cx={xScale(activePoint.x)}
                 cy={yScale(activePoint.y)}
                 r={5.5}
+                fill={CHART_COLORS.pointFill}
+                stroke={CHART_COLORS.pointStroke}
+                strokeWidth={CHART_COLORS.pointStrokeWidth}
               />
             </g>
           ) : null}
@@ -1076,22 +1181,47 @@ function LineChart({ chartState, activeIndex, onActiveIndexChange, xAxisLabel })
         >
           {xTicks.map((tick) => (
             <g key={tick} transform={`translate(${xScale(tick)} 0)`}>
-              <line y1={0} y2={6} />
-              <text y={20}>{formatAxisNumber(tick, chartState.xDecimals)}</text>
+              <line y1={0} y2={6} stroke={CHART_COLORS.axisLine} />
+              <text
+                y={20}
+                fill={CHART_COLORS.axisText}
+                fontSize={`${AXIS_FONT_SIZE_PX}px`}
+                fontFamily={CHART_FONT_FAMILY}
+                textAnchor="middle"
+              >
+                {formatAxisNumber(tick, chartState.xDecimals)}
+              </text>
             </g>
           ))}
         </g>
         <g className="chart-axis chart-axis--y" transform={`translate(${margin.left} ${margin.top})`}>
           {yTicks.map((tick) => (
             <g key={tick} transform={`translate(0 ${yScale(tick)})`}>
-              <line x1={-6} x2={0} />
-              <text x={-12} dy="0.32em">
+              <line x1={-6} x2={0} stroke={CHART_COLORS.axisLine} />
+              <text
+                x={-12}
+                dy="0.32em"
+                fill={CHART_COLORS.axisText}
+                fontSize={`${AXIS_FONT_SIZE_PX}px`}
+                fontFamily={CHART_FONT_FAMILY}
+                textAnchor="end"
+              >
                 {chartState.yOption.tickFormatter(tick)}
               </text>
             </g>
           ))}
         </g>
-        <text className="chart-axis__label" x={margin.left + innerWidth / 2} y={height - 12}>
+        <text
+          className="chart-axis__label"
+          x={margin.left + innerWidth / 2}
+          y={height - 12}
+          fill={CHART_COLORS.axisLabel}
+          fontSize={`${AXIS_LABEL_FONT_SIZE_PX}px`}
+          fontWeight={600}
+          letterSpacing={CHART_COLORS.axisLabelLetterSpacing}
+          fontFamily={CHART_FONT_FAMILY}
+          textAnchor="middle"
+        >
           {xAxisLabel}
         </text>
         <text
@@ -1099,6 +1229,11 @@ function LineChart({ chartState, activeIndex, onActiveIndexChange, xAxisLabel })
           transform={`translate(18 ${margin.top + innerHeight / 2}) rotate(-90)`}
           textAnchor="middle"
           dominantBaseline="middle"
+          fill={CHART_COLORS.axisLabel}
+          fontSize={`${AXIS_LABEL_FONT_SIZE_PX}px`}
+          fontWeight={600}
+          letterSpacing={CHART_COLORS.axisLabelLetterSpacing}
+          fontFamily={CHART_FONT_FAMILY}
         >
           {chartState.yOption.axisLabel}
         </text>
