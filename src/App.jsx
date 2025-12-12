@@ -16,9 +16,9 @@ const FORM_SECTIONS = [
       { name: 'thrusterIspSeconds', label: 'Thruster performance (Isp)', defaultValue: '240', unit: 's', min: 100, max: 1000, step: '1', hint: 'Specific impulse for the interceptor and kill vehicle thrusters.' },
       { name: 'killVehicleDryMassKg', label: 'Kill vehicle dry mass', defaultValue: '25.0', unit: 'kg', min: 1, step: '0.1', hint: 'Total mass of the kill vehicle (structure, sensors, thrusters, avionics, etc.) not including propellant.' },
       { name: 'interceptorBodyDryMassKg', label: 'Interceptor body dry mass', defaultValue: '25.0', unit: 'kg', min: 1, step: '0.1', hint: 'Total mass of the interceptor (structure, thrusters, avionics, etc.) not including the kill vehicle or propellant.' },
-      { name: 'supportModuleDryMassKg', label: 'Support module dry mass', defaultValue: '50', unit: 'kg', min: 1, step: '1', hint: 'Mass of the module that houses the interceptor in orbit for power, communications, station keeping, etc. that is left behind when the interceptor fires. If multiple interceptors are housed together, this is the fraction of the total module mass allocated for each interceptor.'},
+      { name: 'supportModuleDryMassKg', label: 'Support module dry mass', defaultValue: '50', unit: 'kg', min: 1, step: '1', hint: 'Mass of the module (or garage) that houses the interceptor in orbit for power, communications, station keeping, etc. that is left behind when the interceptor fires. If multiple interceptors are housed together, this is the fraction of the total module mass allocated for each interceptor.'},
       { name: 'sbiLifeExpectancyYears', label: 'SBI life expectancy', defaultValue: '5', unit: 'years', min: 1, max: 20, step: '0.1', hint: 'How long each interceptor is expected to last in orbit before replacement.' },
-      { name: 'killProbabilityPercent', label: 'Kill probability (Pk)', defaultValue: '80.0', unit: '%', min: 1, max: 99.9, step: '0.1', hint: 'Probability that a single interceptor will destory its target.' },
+      { name: 'killProbabilityPercent', label: 'Kill probability (Pk)', defaultValue: '80.0', unit: '%', min: 1, max: 99.9, step: '0.1', hint: 'Probability that a single interceptor will destroy its target.' },
       { name: 'compositeKillProbabilityPercent', label: 'Composite kill probability', defaultValue: '96.0', unit: '%', min: 1, max: 99.9, step: '0.1', hint: 'Desired overall probability that each threat will be destroyed. In combination with the single-shot Pk, this determines how many interceptors must be fired at each threat.' }
       
     ]
@@ -27,10 +27,10 @@ const FORM_SECTIONS = [
     id: 'threat-parameters',
     title: 'Threat parameters',
     fields: [
-      { name: 'salvoSize', label: 'Salvo size', defaultValue: '1', unit: 'missiles', min: 1, max: 1000, step: '1', hint: 'Maximum number of missiles launched at once the systems should be able to intercept.' },
-      { name: 'interceptAltitudeKm', label: 'Intercept altitude', defaultValue: '200', unit: 'km', min: 50, max: 10000, step: '5', hint: 'Minimum altitude at which threats will be engaged. If below 100km, additional mass should be added to the kill vehicle to accomodate atmospheric re-entry (heat sheilding, etc.).' },
+      { name: 'salvoSize', label: 'Salvo size', defaultValue: '1', unit: 'missiles/warheads', min: 1, max: 1000, step: '1', hint: 'Maximum number of missiles in boost-phase (or warheads in midcourse) the system should be able to intercept in a salvo.' },
+      { name: 'interceptAltitudeKm', label: 'Minimum intercept altitude', defaultValue: '200', unit: 'km', min: 50, max: 10000, step: '5', hint: 'Minimum altitude at which threats will be engaged. If below 100km, additional mass should be added to the kill vehicle to accommodate atmospheric re-entry (heat shielding, etc.).' },
       { name: 'maxLatitudeCoverageDeg', label: 'Max latitude coverage', defaultValue: '90', unit: 'deg', min: 1, max: 90, step: '1', hint: 'Maximum latitude where SBIs will provide coverage. For global coverage, use 90 degrees. For North Korea and Iran only, use 45 degrees.' },
-      { name: 'flyoutTimeSeconds', label: 'Flyout time', defaultValue: '120.0', unit: 's', min: 10, max: 1800, step: '1', hint: 'The time between when the command is given to fire an interceptor and the latest point at which it can hit a target.' }
+      { name: 'flyoutTimeSeconds', label: 'Flyout time', defaultValue: '120', unit: 's', min: 10, max: 1800, step: '1', hint: 'The time between when the command is given to fire an interceptor and the latest point at which it can hit a target.' }
     ]
   },
   {
@@ -127,7 +127,7 @@ const DEFAULT_CHART_CONFIG = {
   yField: 'interceptorMassKg',
   xField: 'maxDeltaVKmPerS',
   rangeStart: '4',
-  rangeEnd: '10'
+  rangeEnd: '14'
 };
 
 const MAX_CHART_POINTS = 3000;
@@ -287,6 +287,14 @@ export default function App() {
   const handleInputChange = (event) => {
     const { name, value } = event.target;
     const sanitised = value.replace(/,/g, '');
+
+    if (name === 'flyoutTimeSeconds') {
+      if (/^\d*$/.test(sanitised)) {
+        setInputs((prev) => ({ ...prev, [name]: sanitised }));
+      }
+      return;
+    }
+
     if (sanitised === '' || /^\d*(\.\d*)?$/.test(sanitised)) {
       setInputs((prev) => ({ ...prev, [name]: sanitised }));
     }
@@ -612,7 +620,7 @@ export default function App() {
             <li>The propellant mass calculations assume both the interceptor and kill vehicle use thrusters with the same Isp.</li>
             <li>The cost calculations assume that the learning curve resets with each generation of interceptors. This means that each time the constellation must be replenished over the period of analysis, the unit cost of the interceptors reverts to the original first unit cost and then follows the learning curve again. The same assumption is also used for launch costs.</li>
             <li>Costs do not include spares or the expense of safely disposing of interceptors that fail on-orbit.</li>
-            <li>A previous version of the calculator (prior to 10/19/2025) used a simplfying assumption to calculate the fraction of the area around the Earth each interceptor could reach. This assumption was the same as used by APS in its 2004 study. It works well for boost phase interceptors as described in the APS analysis, but it becomes less accurate for interceptors in higher orbits with longer flyout times, such as midcourse interceptors. The updated calculator now uses a more accurate calculation for the curved area of the spherical cap each interceptor's flyout radius intercepts. The number of interceptors required is now ~1.5% higher for boost-phase SBIs and ~15-20% higher for midcourse SBIs.</li>
+            <li>A previous version of the calculator (prior to 10/19/2025) used a simplifying assumption to calculate the fraction of the area around the Earth each interceptor could reach. This assumption was the same as used by APS in its 2004 study. It works well for boost phase interceptors as described in the APS analysis, but it becomes less accurate for interceptors in higher orbits with longer flyout times, such as midcourse interceptors. The updated calculator now uses a more accurate calculation for the curved area of the spherical cap each interceptor's flyout radius intercepts. The number of interceptors required is now ~1.5% higher for boost-phase SBIs and ~15-20% higher for midcourse SBIs.</li>
           </ul>
         </details>
       </section>
@@ -1740,7 +1748,7 @@ function prepareInputs(rawInputs) {
   const validationErrors = [];
 
   if (!positive(numbers.sbiOrbitAltitudeKm)) {
-    validationErrors.push('SBI orbit altitude must be greater than zero.');
+    validationErrors.push('SBI orbit altitude must be between 150 km and 22,500 km.');
   }
 
   if (!positive(numbers.averageAccelerationG)) {
@@ -1775,14 +1783,14 @@ function prepareInputs(rawInputs) {
 
   if (!Number.isFinite(numbers.killProbabilityPercent)) {
     validationErrors.push('Kill probability must be a number.');
-  } else if (numbers.killProbabilityPercent <= 0 || numbers.killProbabilityPercent >= 100) {
-    validationErrors.push('Kill probability must be between 0% and 100%.');
+  } else if (numbers.killProbabilityPercent <= 0 || numbers.killProbabilityPercent > 100) {
+    validationErrors.push('Kill probability must be greater than 0% and less than or equal to 100%.');
   }
 
   if (!Number.isFinite(numbers.compositeKillProbabilityPercent)) {
     validationErrors.push('Composite kill probability must be a number.');
-  } else if (numbers.compositeKillProbabilityPercent <= 0 || numbers.compositeKillProbabilityPercent >= 100) {
-    validationErrors.push('Composite kill probability must be between 0% and 100%.');
+  } else if (numbers.compositeKillProbabilityPercent <= 0 || numbers.compositeKillProbabilityPercent > 100) {
+    validationErrors.push('Composite kill probability must be greater than 0% and less than or equal to 100%.');
   }
 
   if (!positive(numbers.sbiLifeExpectancyYears)) {
@@ -1798,9 +1806,9 @@ function prepareInputs(rawInputs) {
   }
 
   if (numbers.interceptAltitudeKm < 50) {
-    validationErrors.push('Intercept altitude must be at least 50km.');
+    validationErrors.push('Minimum intercept altitude must be at least 50km.');
   } else if (numbers.interceptAltitudeKm > numbers.sbiOrbitAltitudeKm) {
-    validationErrors.push('Intercept altitude cannot exceed the SBI orbit altitude.');
+    validationErrors.push('Minimum intercept altitude cannot exceed the SBI orbit altitude.');
   }
 
   if (!Number.isFinite(numbers.maxLatitudeCoverageDeg)) {
@@ -1809,8 +1817,9 @@ function prepareInputs(rawInputs) {
     validationErrors.push('Max latitude coverage must be between 0 and 90 degrees.');
   }
 
-  if (!positive(numbers.flyoutTimeSeconds)) {
-    validationErrors.push('Flyout time must be greater than zero.');
+  numbers.flyoutTimeSeconds = Math.max(1, Math.round(numbers.flyoutTimeSeconds));
+  if (!Number.isFinite(numbers.flyoutTimeSeconds) || numbers.flyoutTimeSeconds < 10 || numbers.flyoutTimeSeconds > 1800) {
+    validationErrors.push('Flyout time must be between 10 and 1,800 seconds.');
   }
 
   if (!nonNegative(numbers.nonRecurringDevCostMillion)) {
@@ -2269,7 +2278,7 @@ function formatSeconds(value) {
 
 function formatAcceleration(value) {
   if (!Number.isFinite(value)) return '--';
-  return `${decimalFormatter.format(value)} m/s²`;
+  return `${decimalFormatter.format(value)} m/s^2`;
 }
 
 function formatVelocity(value) {
@@ -2329,4 +2338,3 @@ function positive(value) {
 function nonNegative(value) {
   return Number.isFinite(value) && value >= 0;
 }
-

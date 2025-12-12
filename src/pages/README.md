@@ -1,4 +1,3 @@
 ﻿# Pages Directory
 
-Use this folder for top-level routed pages (e.g., `/pages/launch-vehicles.jsx`).
-Each file should export a React component that renders a chart page using data from `src/data/` or live props.
+Placeholder for future routed pages. The current app is a single-page calculator defined entirely in `src/App.jsx`, so this folder is unused at runtime. If you add additional pages later, export React components from here and wire them up in `main.jsx`.
